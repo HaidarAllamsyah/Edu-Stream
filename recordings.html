@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduStream - Rekaman</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="recordings-container">
+    <button class="btn-action btn-back" id="btnBack">← Kembali ke Meet</button>
+    <h1>📹 Daftar Rekaman</h1>
+    <div id="recordingsList"></div>
+  </div>
+
+  <!-- Video Player Modal -->
+  <div class="video-modal-overlay" id="videoModal" style="display: none;">
+    <div class="video-modal">
+      <div class="video-modal-header">
+        <h3 id="videoModalTitle">Video</h3>
+        <button class="video-modal-close" id="btnCloseModal">✕</button>
+      </div>
+      <video id="videoPlayer" controls controlsList="nodownload"></video>
+    </div>
+  </div>
+
+  <script>
+    const userName = localStorage.getItem('userName');
+    if (!userName) {
+      window.location.href = 'login.html';
+    }
+
+    // Detect base path dynamically
+    const BASE_PATH = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+
+    async function loadRecordings() {
+      const list = document.getElementById('recordingsList');
+      list.innerHTML = '<div class="loading">Memuat...</div>';
+
+      try {
+        const response = await fetch(BASE_PATH + 'api/recordings_list.php');
+        const files = await response.json();
+
+        if (files.length === 0) {
+          list.innerHTML = '<div class="empty-state">📭 Belum ada rekaman</div>';
+          return;
+        }
+
+        list.innerHTML = files
+          .sort((a, b) => new Date(b.created) - new Date(a.created))
+          .map(file => {
+            const date = new Date(file.created);
+            const sizeKB = (file.size / 1024).toFixed(2);
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+            const duration = estimateDuration(file.size);
+
+            return `
+              <div class="recording-item">
+                <div class="recording-info">
+                  <div class="recording-name">📹 ${escapeHtml(file.name)}</div>
+                  <div class="recording-meta">
+                    Ukuran: ${sizeDisplay} | Durasi: ~${duration} | Dibuat: ${date.toLocaleString('id-ID')}
+                  </div>
+                </div>
+                <div class="recording-actions">
+                  <button class="btn-action btn-play" onclick="playRecording('${escapeHtml(file.name)}')">
+                    ▶️ Play
+                  </button>
+                  <a href="${BASE_PATH}api/stream.php?file=${encodeURIComponent(file.name)}&download=1" download class="btn-action btn-download">
+                    ⬇️ Download
+                  </a>
+                  <button class="btn-action btn-delete" onclick="deleteRecording('${escapeHtml(file.name)}')">
+                    🗑️ Hapus
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+      } catch (err) {
+        list.innerHTML = '<div class="empty-state">❌ Gagal memuat rekaman</div>';
+        console.error(err);
+      }
+    }
+
+    function estimateDuration(sizeBytes) {
+      const bitrate = 2500000 + 128000; // video + audio
+      const seconds = (sizeBytes * 8) / bitrate;
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}m ${secs}s`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function playRecording(filename) {
+      const modal = document.getElementById('videoModal');
+      const video = document.getElementById('videoPlayer');
+      const title = document.getElementById('videoModalTitle');
+
+      title.textContent = filename;
+      video.src = `${BASE_PATH}api/stream.php?file=${encodeURIComponent(filename)}`;
+      modal.style.display = 'flex';
+      video.play().catch(() => {});
+    }
+
+    function closeVideoModal() {
+      const modal = document.getElementById('videoModal');
+      const video = document.getElementById('videoPlayer');
+      video.pause();
+      video.src = '';
+      modal.style.display = 'none';
+    }
+
+    async function deleteRecording(filename) {
+      if (!confirm(`Hapus "${filename}"?`)) return;
+
+      try {
+        const response = await fetch(BASE_PATH + 'api/recording_delete.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        });
+        if (response.ok) {
+          loadRecordings();
+        } else {
+          alert('Gagal menghapus rekaman');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Close modal handlers
+    document.getElementById('btnCloseModal').addEventListener('click', closeVideoModal);
+
+    document.getElementById('videoModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('videoModal')) {
+        closeVideoModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeVideoModal();
+      }
+    });
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    loadRecordings();
+    setInterval(loadRecordings, 5000);
+  </script>
+</body>
+</html>

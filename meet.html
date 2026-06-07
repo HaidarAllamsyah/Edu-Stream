@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduStream - Video Conference</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div id="roomInfo">
+    <span class="label">Room:</span>
+    <span id="roomDisplay"></span>
+  </div>
+
+  <div id="participantCount">
+    Peserta: <span id="countDisplay">1</span>
+  </div>
+
+  <div id="recordingIndicator" style="display: none;">
+    <span class="rec-dot"></span> REC
+  </div>
+
+  <div id="video-grid" class="count-1"></div>
+
+  <div id="toolbar">
+    <button class="toolbar-btn active" id="btnMic" title="Matikan Mic">
+      <span>🎤</span>
+      Mic
+    </button>
+    <button class="toolbar-btn active" id="btnCamera" title="Matikan Kamera">
+      <span>📹</span>
+      Kamera
+    </button>
+    <button class="toolbar-btn" id="btnScreenShare" title="Bagikan Layar">
+      <span>🖥️</span>
+      Screen
+    </button>
+    <button class="toolbar-btn" id="btnRecord" title="Mulai Rekaman">
+      <span>⏺️</span>
+      Record
+    </button>
+    <button class="toolbar-btn" id="btnChat" title="Buka Chat">
+      <span>💬</span>
+      Chat
+      <span class="chat-badge" id="chatBadge">0</span>
+    </button>
+    <button class="toolbar-btn" id="btnRecordings" title="Lihat Rekaman">
+      <span>📂</span>
+      Rekaman
+    </button>
+    <button class="toolbar-btn danger" id="btnLeave" title="Keluar dari Room">
+      <span>📞</span>
+      Keluar
+    </button>
+  </div>
+
+  <aside id="chatPanel" aria-hidden="true">
+    <div class="chat-header">
+      <h2>💬 Chat</h2>
+      <button id="btnCloseChat" type="button" title="Tutup Chat">✕</button>
+    </div>
+    <div id="chatMessages"></div>
+    <form id="chatForm">
+      <input id="chatInput" type="text" maxlength="1000" placeholder="Tulis pesan..." autocomplete="off">
+      <button type="submit">Kirim</button>
+    </form>
+  </aside>
+
+  <script src="js/meet.js"></script>
+</body>
+
+</html>

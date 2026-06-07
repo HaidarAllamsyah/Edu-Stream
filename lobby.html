@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduStream - Lobby</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lobby-container {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .welcome {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .welcome h1 {
+      color: #202124;
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .welcome p {
+      color: #5f6368;
+      font-size: 15px;
+    }
+
+    .user-info {
+      background: #f1f3f4;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+      color: #3c4043;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .user-info a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #5f6368;
+      letter-spacing: 0.5px;
+      margin: 24px 0 10px;
+    }
+
+    .room-input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .room-input-row input {
+      flex: 1;
+      padding: 13px 14px;
+      border: 2px solid #dadce0;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .room-input-row input:focus {
+      border-color: #667eea;
+    }
+
+    .btn-go {
+      padding: 13px 22px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-go:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #9aa0a6;
+      margin-top: 6px;
+    }
+
+    .divider {
+      text-align: center;
+      color: #dadce0;
+      margin: 20px 0 4px;
+      font-size: 13px;
+    }
+
+    .btn-full {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-recordings {
+      background: #3c4043;
+      color: white;
+    }
+
+    .btn-logout {
+      background: #ea4335;
+      color: white;
+    }
+
+    .btn-full:hover {
+      opacity: 0.85;
+    }
+
+    .error {
+      color: #d33b27;
+      font-size: 13px;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="lobby-container">
+    <div class="welcome">
+      <h1>🎥 EduStream</h1>
+      <p>Video conference berbasis WebRTC</p>
+    </div>
+
+    <div class="user-info">
+      Masuk sebagai: <strong id="userDisplay"></strong>
+      &nbsp;·&nbsp;
+      <a href="login.html">Ganti nama</a>
+    </div>
+
+    <!-- BUAT / GABUNG ROOM -->
+    <div class="section-title">Masuk ke Room</div>
+    <div class="room-input-row">
+      <input type="text" id="roomIdInput" placeholder="Ketik kode room, contoh: 1" autocomplete="off" maxlength="30">
+      <button class="btn-go" id="btnJoin">Masuk →</button>
+    </div>
+    <div class="hint">Ketik kode room bebas — angka, huruf, atau kata. Semua peserta harus pakai kode yang sama.</div>
+    <div class="error" id="error"></div>
+
+    <div class="divider">──────── atau ────────</div>
+    <button class="btn-full btn-recordings" id="btnRecordings">📂 Lihat Rekaman</button>
+    <button class="btn-full btn-logout" id="btnLogout">Keluar</button>
+  </div>
+
+  <script>
+    const userName = localStorage.getItem('userName');
+    if (!userName) window.location.href = 'login.html';
+    document.getElementById('userDisplay').textContent = userName;
+
+    function doJoin() {
+      const raw = document.getElementById('roomIdInput').value.trim();
+      const errorEl = document.getElementById('error');
+      if (!raw) { errorEl.textContent = 'Masukkan kode room'; return; }
+      // Sanitasi: hanya huruf, angka, dash, underscore
+      const roomId = raw.replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!roomId) { errorEl.textContent = 'Kode room hanya boleh huruf, angka, - atau _'; return; }
+      window.location.href = 'meet.html?room=' + encodeURIComponent(roomId);
+    }
+
+    document.getElementById('btnJoin').addEventListener('click', doJoin);
+    document.getElementById('roomIdInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') doJoin();
+    });
+    document.getElementById('btnRecordings').addEventListener('click', () => {
+      window.location.href = 'recordings.html';
+    });
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('userName');
+      window.location.href = 'login.html';
+    });
+  </script>
+</body>
+
+</html>

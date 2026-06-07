@@ -1,0 +1,21 @@
+# EduStream - Apache Configuration
+# Tambahkan header ngrok-skip-browser-warning agar API tidak diblokir ngrok
+
+<IfModule mod_headers.c>
+    Header always set ngrok-skip-browser-warning "1"
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, X-Filename, ngrok-skip-browser-warning"
+    Header always set Cache-Control "no-store, no-cache, must-revalidate"
+</IfModule>
+
+# Handle OPTIONS preflight
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Proteksi folder data (jangan bisa diakses langsung)
+<FilesMatch "\.json$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
