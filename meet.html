@@ -18,6 +18,21 @@
     Peserta: <span id="countDisplay">1</span>
   </div>
 
+  <div id="rec-status" style="
+    display: none;
+    color: white;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.6);
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    white-space: nowrap;
+  "></div>
+
   <div id="recordingIndicator" style="display: none;">
     <span class="rec-dot"></span> REC
   </div>
@@ -26,39 +41,32 @@
 
   <div id="toolbar">
     <button class="toolbar-btn active" id="btnMic" title="Matikan Mic">
-      <span>🎤</span>
       Mic
     </button>
     <button class="toolbar-btn active" id="btnCamera" title="Matikan Kamera">
-      <span>📹</span>
       Kamera
     </button>
     <button class="toolbar-btn" id="btnScreenShare" title="Bagikan Layar">
-      <span>🖥️</span>
       Screen
     </button>
     <button class="toolbar-btn" id="btnRecord" title="Mulai Rekaman">
-      <span>⏺️</span>
       Record
     </button>
     <button class="toolbar-btn" id="btnChat" title="Buka Chat">
-      <span>💬</span>
       Chat
       <span class="chat-badge" id="chatBadge">0</span>
     </button>
     <button class="toolbar-btn" id="btnRecordings" title="Lihat Rekaman">
-      <span>📂</span>
       Rekaman
     </button>
     <button class="toolbar-btn danger" id="btnLeave" title="Keluar dari Room">
-      <span>📞</span>
       Keluar
     </button>
   </div>
 
   <aside id="chatPanel" aria-hidden="true">
     <div class="chat-header">
-      <h2>💬 Chat</h2>
+      <h2>Chat</h2>
       <button id="btnCloseChat" type="button" title="Tutup Chat">✕</button>
     </div>
     <div id="chatMessages"></div>

@@ -111,6 +111,63 @@ switch ($action) {
         }
         break;
 
+    // ── SAVE: Terima single blob binary dari browser ──────────
+    case 'save':
+        // room dan filename dikirim via query string
+        // body adalah raw binary (Content-Type: application/octet-stream)
+        $room = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['room'] ?? 'unknown');
+        $filename = preg_replace('/[^a-zA-Z0-9_\-.]/', '', $_GET['filename'] ?? '');
+
+        if (empty($filename)) {
+            $filename = 'rec_' . $room . '_' . date('Ymd_His') . '.webm';
+        }
+
+        // Validasi ekstensi
+        if (!preg_match('/^[a-zA-Z0-9_\-]+\.(webm|mp4)$/', $filename)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Nama file tidak valid']);
+            exit;
+        }
+
+        $targetPath = $RECORDINGS_DIR . '/' . $filename;
+
+        // Baca raw binary dari php://input
+        $input = fopen('php://input', 'rb');
+        $output = fopen($targetPath, 'wb');
+
+        if (!$input || !$output) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Gagal membuka stream file']);
+            exit;
+        }
+
+        $written = stream_copy_to_stream($input, $output);
+        fclose($input);
+        fclose($output);
+
+        if ($written > 0) {
+            clearstatcache(true, $targetPath);
+            echo json_encode([
+                'success'  => true,
+                'filename' => $filename,
+                'size'     => filesize($targetPath),
+            ]);
+        } else {
+            // Fallback: coba dari $_FILES jika ada (FormData legacy)
+            if (isset($_FILES['video']) && move_uploaded_file($_FILES['video']['tmp_name'], $targetPath)) {
+                echo json_encode([
+                    'success'  => true,
+                    'filename' => $filename,
+                    'size'     => filesize($targetPath),
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Gagal menyimpan file rekaman (0 bytes written)']);
+            }
+        }
+        break;
+
+
     default:
         http_response_code(400);
         echo json_encode(['error' => 'Action tidak dikenal: ' . htmlspecialchars($action)]);

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ─── Configuration ──────────────────────────────────────────
 $DATA_DIR          = __DIR__ . '/../data/rooms';
 $HEARTBEAT_TIMEOUT = 12;  // detik
-$SIGNAL_MAX_AGE    = 15;  // detik — sinyal lebih lama dari ini dihapus
+$SIGNAL_MAX_AGE    = 30;  // detik — sinyal lebih lama dari ini dihapus
 $SIGNAL_LIMIT      = 300; // maksimal sinyal tersimpan
 
 if (!is_dir($DATA_DIR)) {
@@ -147,6 +147,7 @@ switch ($action) {
         if (isset($input['userName']))  $userName = trim(substr($input['userName'],  0, 50));
         if (!$userName && isset($input['username'])) $userName = trim(substr($input['username'], 0, 50));
         if (!$userName) $userName = 'User';
+        $wantToBeHost = isset($input['wantToBeHost']) ? (bool)$input['wantToBeHost'] : false;
 
         if (!$roomId || !$clientId) {
             http_response_code(400);
@@ -162,8 +163,15 @@ switch ($action) {
             return $u['clientId'] !== $clientId;
         }));
 
-        // User pertama → jadi host
-        if (empty($room['users'])) {
+        // Cek: jika user ingin jadi host tapi sudah ada host, reject
+        if ($wantToBeHost && !empty($room['users']) && $room['hostClientId'] !== null) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Room ini sudah memiliki host. Bergabunglah sebagai peserta.']);
+            exit;
+        }
+
+        // Set host: jika dia yang pertama di room atau dia mau jadi host
+        if (empty($room['users']) || $wantToBeHost) {
             $room['hostClientId'] = $clientId;
         }
 
@@ -243,6 +251,17 @@ switch ($action) {
         }
 
         $room = loadRoom($roomId);
+        cleanupStaleUsers($room);
+
+        if (empty($room['users'])) {
+            // Hapus room file jika kosong
+            $file = getRoomFile($roomId);
+            if ($file && file_exists($file)) {
+                unlink($file);
+            }
+            echo json_encode(['error' => 'not_in_room']);
+            exit;
+        }
 
         // Update heartbeat
         $userFound = false;
@@ -272,7 +291,7 @@ switch ($action) {
             $age = $now - (isset($sig['createdAt']) ? $sig['createdAt'] : 0);
 
             // Buang sinyal yang sudah terlalu lama
-            if ($age > 15) continue;
+            if ($age > $SIGNAL_MAX_AGE) continue;
 
             if ($sig['to'] === $clientId) {
                 // Kirim jika lebih baru dari yang terakhir diterima
@@ -281,8 +300,8 @@ switch ($action) {
                     $newSignals[]   = $sig;
                     $latestSignalId = $sigId;
                 }
-                // Simpan sementara untuk durasi pendek
-                if ($age < 8) {
+                // Simpan sementara untuk durasi lebih lama agar tidak hilang
+                if ($age < 20) {
                     $remainingSignals[] = $sig;
                 }
             } else {
@@ -305,7 +324,15 @@ switch ($action) {
             $room['chat'] = array_slice($room['chat'], -200);
         }
 
-        saveRoom($roomId, $room);
+        // Hapus room jika kosong
+        if (empty($room['users'])) {
+            $file = getRoomFile($roomId);
+            if ($file && file_exists($file)) {
+                unlink($file);
+            }
+        } else {
+            saveRoom($roomId, $room);
+        }
 
         // Susun daftar user (tanpa lastHeartbeat — info internal)
         $userList = array_map(function($u) {

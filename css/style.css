@@ -15,10 +15,10 @@ body {
 #video-grid {
   display: grid;
   width: 100%;
-  height: calc(100svh - 88px);
+  height: calc(100svh - 132px);
   gap: 16px;
   background: #111315;
-  padding: 24px;
+  padding: 24px 24px 160px;
   align-content: center;
   justify-content: center;
   overflow-y: auto;
@@ -107,6 +107,38 @@ body {
   object-fit: contain;
 }
 
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(18, 20, 25, 0.92);
+  color: #fff;
+  z-index: 8;
+  flex-direction: column;
+}
+
+.avatar-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+.avatar-name {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .video-label {
   position: absolute;
   bottom: 12px;
@@ -153,16 +185,18 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 88px;
-  background: #111315;
+  min-height: 88px;
+  background: rgba(17, 19, 21, 0.96);
   border-top: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  padding: 8px;
+  padding: 10px 12px 14px;
   z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .toolbar-btn {
@@ -187,6 +221,46 @@ body {
   transform: scale(1.05);
 }
 
+#vbgPanel {
+  position: fixed;
+  bottom: 108px;
+  left: 16px;
+  background: rgba(16, 18, 23, 0.96);
+  border: 1px solid #3c4043;
+  border-radius: 20px;
+  padding: 12px;
+  display: none;
+  gap: 10px;
+  z-index: 110;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 220px;
+}
+
+#vbgPanel button {
+  border: none;
+  background: #303134;
+  color: #e8eaed;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#vbgPanel button.active,
+#vbgPanel button:hover {
+  background: #667eea;
+}
+
+#vbgPanel input[type="color"] {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+
 .toolbar-btn.active {
   background: #667eea;
 }
@@ -202,6 +276,14 @@ body {
 .toolbar-btn.recording {
   background: #d33b27;
   animation: pulse-recording 1s infinite;
+}
+
+#btnRecord {
+  display: none;
+}
+
+#btnRecord.visible {
+  display: flex;
 }
 
 @keyframes pulse-recording {
@@ -716,4 +798,29 @@ body {
 
 .btn-play:hover {
   background: #2d9249;
+}
+
+/* Recording UI States */
+#btnRecord.recording-active {
+    background: #e53e3e !important;
+    animation: pulse-rec 1.2s infinite;
+}
+
+#btnRecord.recording-uploading {
+    background: #d69e2e;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+#btnRecord.recording-done {
+    background: #38a169;
+}
+
+#btnRecord.recording-error {
+    background: #e53e3e;
+}
+
+@keyframes pulse-rec {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }

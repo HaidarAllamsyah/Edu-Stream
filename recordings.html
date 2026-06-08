@@ -9,7 +9,7 @@
 <body>
   <div class="recordings-container">
     <button class="btn-action btn-back" id="btnBack">← Kembali ke Meet</button>
-    <h1>📹 Daftar Rekaman</h1>
+    <h1>Daftar Rekaman</h1>
     <div id="recordingsList"></div>
   </div>
 
@@ -42,7 +42,7 @@
         const files = await response.json();
 
         if (files.length === 0) {
-          list.innerHTML = '<div class="empty-state">📭 Belum ada rekaman</div>';
+          list.innerHTML = '<div class="empty-state">Belum ada rekaman</div>';
           return;
         }
 
@@ -58,20 +58,20 @@
             return `
               <div class="recording-item">
                 <div class="recording-info">
-                  <div class="recording-name">📹 ${escapeHtml(file.name)}</div>
+                  <div class="recording-name">${escapeHtml(file.name)}</div>
                   <div class="recording-meta">
                     Ukuran: ${sizeDisplay} | Durasi: ~${duration} | Dibuat: ${date.toLocaleString('id-ID')}
                   </div>
                 </div>
                 <div class="recording-actions">
                   <button class="btn-action btn-play" onclick="playRecording('${escapeHtml(file.name)}')">
-                    ▶️ Play
+                    Play
                   </button>
                   <a href="${BASE_PATH}api/stream.php?file=${encodeURIComponent(file.name)}&download=1" download class="btn-action btn-download">
-                    ⬇️ Download
+                    Download
                   </a>
                   <button class="btn-action btn-delete" onclick="deleteRecording('${escapeHtml(file.name)}')">
-                    🗑️ Hapus
+                    Hapus
                   </button>
                 </div>
               </div>
@@ -79,7 +79,7 @@
           })
           .join('');
       } catch (err) {
-        list.innerHTML = '<div class="empty-state">❌ Gagal memuat rekaman</div>';
+        list.innerHTML = '<div class="empty-state">Gagal memuat rekaman</div>';
         console.error(err);
       }
     }

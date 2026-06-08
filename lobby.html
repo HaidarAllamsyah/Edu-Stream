@@ -154,7 +154,7 @@
 <body>
   <div class="lobby-container">
     <div class="welcome">
-      <h1>🎥 EduStream</h1>
+      <h1>EduStream</h1>
       <p>Video conference berbasis WebRTC</p>
     </div>
 
@@ -164,17 +164,26 @@
       <a href="login.html">Ganti nama</a>
     </div>
 
-    <!-- BUAT / GABUNG ROOM -->
-    <div class="section-title">Masuk ke Room</div>
+    <!-- BUAT ROOM SEBAGAI HOST -->
+    <div class="section-title">Buat Room sebagai Host</div>
     <div class="room-input-row">
-      <input type="text" id="roomIdInput" placeholder="Ketik kode room, contoh: 1" autocomplete="off" maxlength="30">
-      <button class="btn-go" id="btnJoin">Masuk →</button>
+      <input type="text" id="hostRoomInput" placeholder="Ketik kode room, contoh: 1" autocomplete="off" maxlength="30">
+      <button class="btn-go" id="btnCreateRoom">Buat →</button>
     </div>
-    <div class="hint">Ketik kode room bebas — angka, huruf, atau kata. Semua peserta harus pakai kode yang sama.</div>
-    <div class="error" id="error"></div>
+    <div class="hint">Anda akan menjadi host dari room ini. Peserta lain bisa bergabung pakai kode yang sama.</div>
+    <div class="error" id="hostError"></div>
+
+    <!-- BERGABUNG SEBAGAI PESERTA -->
+    <div class="section-title">Bergabung sebagai Peserta</div>
+    <div class="room-input-row">
+      <input type="text" id="guestRoomInput" placeholder="Ketik kode room" autocomplete="off" maxlength="30">
+      <button class="btn-go" id="btnJoinRoom">Masuk →</button>
+    </div>
+    <div class="hint">Ketik kode room yang sudah dibuat host. Anda akan bergabung sebagai peserta biasa.</div>
+    <div class="error" id="guestError"></div>
 
     <div class="divider">──────── atau ────────</div>
-    <button class="btn-full btn-recordings" id="btnRecordings">📂 Lihat Rekaman</button>
+    <button class="btn-full btn-recordings" id="btnRecordings">Lihat Rekaman</button>
     <button class="btn-full btn-logout" id="btnLogout">Keluar</button>
   </div>
 
@@ -183,25 +192,42 @@
     if (!userName) window.location.href = 'login.html';
     document.getElementById('userDisplay').textContent = userName;
 
-    function doJoin() {
-      const raw = document.getElementById('roomIdInput').value.trim();
-      const errorEl = document.getElementById('error');
+    function doCreateRoom() {
+      const raw = document.getElementById('hostRoomInput').value.trim();
+      const errorEl = document.getElementById('hostError');
       if (!raw) { errorEl.textContent = 'Masukkan kode room'; return; }
-      // Sanitasi: hanya huruf, angka, dash, underscore
       const roomId = raw.replace(/[^a-zA-Z0-9_-]/g, '');
       if (!roomId) { errorEl.textContent = 'Kode room hanya boleh huruf, angka, - atau _'; return; }
+      localStorage.setItem('isHost', 'true');
       window.location.href = 'meet.html?room=' + encodeURIComponent(roomId);
     }
 
-    document.getElementById('btnJoin').addEventListener('click', doJoin);
-    document.getElementById('roomIdInput').addEventListener('keypress', e => {
-      if (e.key === 'Enter') doJoin();
+    function doJoinRoom() {
+      const raw = document.getElementById('guestRoomInput').value.trim();
+      const errorEl = document.getElementById('guestError');
+      if (!raw) { errorEl.textContent = 'Masukkan kode room'; return; }
+      const roomId = raw.replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!roomId) { errorEl.textContent = 'Kode room hanya boleh huruf, angka, - atau _'; return; }
+      localStorage.setItem('isHost', 'false');
+      window.location.href = 'meet.html?room=' + encodeURIComponent(roomId);
+    }
+
+    document.getElementById('btnCreateRoom').addEventListener('click', doCreateRoom);
+    document.getElementById('hostRoomInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') doCreateRoom();
     });
+
+    document.getElementById('btnJoinRoom').addEventListener('click', doJoinRoom);
+    document.getElementById('guestRoomInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') doJoinRoom();
+    });
+
     document.getElementById('btnRecordings').addEventListener('click', () => {
       window.location.href = 'recordings.html';
     });
     document.getElementById('btnLogout').addEventListener('click', () => {
       localStorage.removeItem('userName');
+      localStorage.removeItem('isHost');
       window.location.href = 'login.html';
     });
   </script>
