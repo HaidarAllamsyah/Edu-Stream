@@ -803,12 +803,39 @@ function stopScreenShare() {
   screenSharing = false;
   if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
 
-  replaceLocalVideoTrack(getSendableVideoTrack());
-  updateLocalTileStream();
+  // Kembalikan track kamera ke semua peer connection
+  const cameraTrack = localStream && localStream.getVideoTracks()[0];
+  if (cameraTrack) {
+    Object.values(peers).forEach(({ pc }) => {
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender) {
+        sender.replaceTrack(cameraTrack)
+          .then(() => console.log('[SCREEN] Restored camera track to peer'))
+          .catch(e => console.warn('[SCREEN] replaceTrack failed:', e));
+      }
+    });
+    console.log('[SCREEN] Camera track restored to all peers');
+  } else {
+    console.warn('[SCREEN] No camera track to restore, falling back to getSendableVideoTrack');
+    replaceLocalVideoTrack(getSendableVideoTrack());
+  }
+
+  // Kembalikan srcObject tile video lokal ke stream kamera
+  const localVideo = document.querySelector('#tile-' + clientId + ' video');
+  if (localVideo && localStream) {
+    localVideo.srcObject = localStream;
+    localVideo.play().catch(e => console.warn('[SCREEN] Restore local video play failed:', e));
+    console.log('[SCREEN] Local video tile srcObject restored to localStream');
+  } else {
+    console.warn('[SCREEN] Could not restore local video tile:', { localVideo: !!localVideo, localStream: !!localStream });
+    updateLocalTileStream();
+  }
+
   const st = document.getElementById('tile-screen');
   if (st) st.remove();
   btn.classList.remove('active');
   refreshGrid();
+  console.log('[SCREEN] Screen share stopped and local video restored');
 }
 
 function startScreenShare(capturedScreenStream) {
@@ -826,7 +853,12 @@ function startScreenShare(capturedScreenStream) {
   grid.insertBefore(st, grid.firstChild);
   btn.classList.add('active');
   refreshGrid();
-  track.addEventListener('ended', () => { if (screenSharing) stopScreenShare(); });
+
+  // Event 'ended' — restore otomatis saat user stop dari browser (bukan dari tombol)
+  track.addEventListener('ended', () => {
+    console.log('[SCREEN] Screen track ended by browser, restoring local video...');
+    if (screenSharing) stopScreenShare();
+  });
 }
 
 function stopVBG() {
@@ -1191,19 +1223,82 @@ function buildAudioMix() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioDest = audioCtx.createMediaStreamDestination();
   audioSources = {}; // reset
-  console.log('[REC] Audio mix context created');
+  console.log('[AUDIO MIX] AudioContext created, state:', audioCtx.state);
 
-  // Lokal
-  if (localStream) connectAudioSource(localStream, 'local');
+  // Resume AudioContext jika suspended (browser suspend tanpa user gesture)
+  const doConnect = () => {
+    console.log('[AUDIO MIX] AudioContext state after resume:', audioCtx.state);
 
-  // Remote peers — connect SEMUA yang sudah ada
-  Object.entries(peers).forEach(([id, peer]) => {
-    if (peer.stream) {
-      connectAudioSource(peer.stream, id);
+    // LOCAL mic host — PENTING: sering terlewat
+    if (localStream) {
+      const localAudioTracks = localStream.getAudioTracks();
+      if (localAudioTracks.length > 0) {
+        const liveTracks = localAudioTracks.filter(t => t.readyState === 'live');
+        if (liveTracks.length > 0) {
+          try {
+            const localSrc = audioCtx.createMediaStreamSource(localStream);
+            localSrc.connect(audioDest);
+            audioSources['local'] = localSrc;
+            console.log('[AUDIO MIX] Connected LOCAL mic, tracks:', liveTracks.length);
+          } catch (e) {
+            console.warn('[AUDIO MIX] Failed to connect local mic:', e);
+          }
+        } else {
+          console.warn('[AUDIO MIX] localStream audio tracks not live:', localAudioTracks.map(t => t.readyState));
+        }
+      } else {
+        console.warn('[AUDIO MIX] localStream has no audio tracks!');
+      }
+    } else {
+      console.warn('[AUDIO MIX] localStream is null!');
     }
-  });
 
-  console.log('[REC] Initial audio sources:', Object.keys(audioSources).join(', ') || '(none)');
+    // Remote peers — connect SEMUA yang sudah ada
+    Object.entries(peers).forEach(([id, peer]) => {
+      if (!peer.stream) {
+        console.warn('[AUDIO MIX] Peer', id, 'has no stream');
+        return;
+      }
+      const audioTracks = peer.stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.warn('[AUDIO MIX] Peer', id, 'has no audio tracks');
+        return;
+      }
+      const liveTracks = audioTracks.filter(t => t.readyState === 'live');
+      if (liveTracks.length === 0) {
+        console.warn('[AUDIO MIX] Peer', id, 'audio tracks not live:', audioTracks.map(t => t.readyState));
+        return;
+      }
+      if (audioSources[id]) {
+        console.log('[AUDIO MIX] Peer', id, 'already connected, skipping');
+        return;
+      }
+      try {
+        const src = audioCtx.createMediaStreamSource(peer.stream);
+        src.connect(audioDest);
+        audioSources[id] = src;
+        console.log('[AUDIO MIX] Connected remote peer:', id, 'live tracks:', liveTracks.length);
+      } catch (e) {
+        console.warn('[AUDIO MIX] Failed to connect peer', id, ':', e);
+      }
+    });
+
+    console.log('[AUDIO MIX] Connected sources:', Object.keys(audioSources).join(', ') || '(none)');
+    console.log('[AUDIO MIX] Destination audio tracks:', audioDest.stream.getAudioTracks().length);
+  };
+
+  if (audioCtx.state === 'suspended') {
+    console.log('[AUDIO MIX] AudioContext suspended, resuming...');
+    audioCtx.resume().then(() => {
+      console.log('[AUDIO MIX] AudioContext resumed successfully');
+      doConnect();
+    }).catch(e => {
+      console.warn('[AUDIO MIX] AudioContext resume failed:', e);
+      doConnect(); // tetap coba connect meski resume gagal
+    });
+  } else {
+    doConnect();
+  }
 
   return audioDest.stream;
 }
@@ -1278,19 +1373,15 @@ async function toggleRecord() {
 function getSupportedMimeType() {
   const types = [
     'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus', 
-    'video/webm;codecs=h264,opus',
+    'video/webm;codecs=vp8,opus',
     'video/webm',
-    'video/mp4;codecs=h264,aac',
-    'video/mp4'
   ];
   for (const type of types) {
     if (MediaRecorder.isTypeSupported(type)) {
-      console.log('[REC] Using MIME type:', type);
+      console.log('[REC] MIME type:', type);
       return type;
     }
   }
-  console.warn('[REC] No preferred MIME type supported, using default');
   return '';
 }
 
@@ -1323,14 +1414,13 @@ async function startRec() {
     audioTracks: compositeStream.getAudioTracks().length,
   });
 
-  const mime = getSupportedMimeType();
-
+  const recOptions = {
+    mimeType: getSupportedMimeType(),
+    videoBitsPerSecond: 3000000,  // 3 Mbps
+    audioBitsPerSecond: 128000
+  };
   try {
-    mediaRecorder = new MediaRecorder(compositeStream, {
-      mimeType: mime,
-      videoBitsPerSecond: 2500000,
-      audioBitsPerSecond: 128000,
-    });
+    mediaRecorder = new MediaRecorder(compositeStream, recOptions);
   } catch (e) { console.log('[REC] MediaRecorder creation failed:', e); showNotif('MediaRecorder error: ' + e.message); return; }
 
   recordedChunks = [];
@@ -1356,7 +1446,7 @@ async function startRec() {
       await uploadFinalRecording(finalBlob);
       recordedChunks.length = 0; // clear memory
     }
-    
+
     await api('recording-stop', { roomId, clientId });
     recordingFileName = null;
     console.log('[REC] Recording state stopped');
@@ -1374,7 +1464,7 @@ async function startRec() {
 async function stopRec() {
   console.log('[REC] Stop requested');
   recordingActive = false;
-  
+
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   } else {
@@ -1396,7 +1486,7 @@ async function uploadFinalRecording(blob) {
 
   for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
     try {
-      console.log('[UPLOAD] Attempt', attempt, 'of', MAX_RETRY, '— size:', (blob.size/1024/1024).toFixed(2), 'MB');
+      console.log('[UPLOAD] Attempt', attempt, 'of', MAX_RETRY, '— size:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
       setRecUI('uploading', `Menyimpan rekaman... (percobaan ${attempt})`);
 
       // Kirim sebagai binary octet-stream (bukan FormData)
@@ -1425,7 +1515,7 @@ async function uploadFinalRecording(blob) {
       console.warn('[UPLOAD] Attempt', attempt, 'failed:', err.message);
 
       if (attempt < MAX_RETRY) {
-        setRecUI('uploading', `Gagal, mencoba ulang dalam ${RETRY_DELAY/1000} detik...`);
+        setRecUI('uploading', `Gagal, mencoba ulang dalam ${RETRY_DELAY / 1000} detik...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
       } else {
         console.error('[UPLOAD] All attempts failed');
